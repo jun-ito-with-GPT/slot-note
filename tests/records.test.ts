@@ -1,0 +1,8 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Entry, localDate, monthlySummary, profit, validateEntry } from '../src/lib/records';
+const entry: Entry = {id:'1',played_on:'2026-10-08',store:'店舗',machine:'機種',investment:10000,returned:18000,memo:''};
+test('収支は回収から投資を引く。負け・ゼロも計算できる',()=>{assert.equal(profit(entry),8000);assert.equal(profit({...entry,returned:0}),-10000);assert.equal(profit({...entry,returned:10000}),0);});
+test('月境界を分け、複数実戦の投資・回収・収支を合計する',()=>{const records=[entry,{...entry,id:'2',played_on:'2026-10-31',returned:0},{...entry,id:'3',played_on:'2026-09-30'},{...entry,id:'4',played_on:'2026-11-01'}];const result=monthlySummary(records,'2026-10');assert.equal(result.profit,-2000);assert.equal(result.investment,20000);assert.equal(result.returned,18000);assert.deepEqual(result.records.map(e=>e.id),['2','1']);assert.equal(records[0].id,'1');assert.equal(monthlySummary(records,'2025-01').profit,0);});
+test('日付と金額の境界、不正入力を検証する',()=>{assert.equal(validateEntry(entry),null);assert.equal(validateEntry({...entry,investment:0,returned:100000000}),null);for(const investment of [-1,1.5,NaN,Infinity,100000001])assert.ok(validateEntry({...entry,investment}));for(const played_on of ['2026-02-30','invalid','2026-13-01'])assert.ok(validateEntry({...entry,played_on}));assert.equal(validateEntry({...entry,played_on:'2024-02-29'}),null);assert.ok(validateEntry({...entry,store:' '}));assert.ok(validateEntry({...entry,machine:'x'.repeat(101)}));assert.ok(validateEntry({...entry,memo:'x'.repeat(2001)}));});
+test('今日の日付は端末のローカル日付を使う',()=>{assert.equal(localDate(new Date(2026,0,2,0,5)),'2026-01-02');});
